@@ -61,10 +61,16 @@ public class CFG {
 			for (int j = 0; j < i; j++) {
 				replaceProduction(String.valueOf(list[i]), String.valueOf(list[j]));
 			}
+			System.out.println("list[" + i + "]: " + list[i]);
+			System.out.println(this.getProductionsString());
+
 			eliminateImmediateLeftRecursion(String.valueOf(list[i]));
+
+			System.out.println("list[" + i + "] Imm: " + list[i]);
+			System.out.println(this.getProductionsString());
 		}
 
-		System.out.println(this.toString());
+		System.out.println(this.getProductionsString());
 	}
 
 	/**
@@ -84,6 +90,18 @@ public class CFG {
 
 		// 不能在遍历时删除对象，所以创建一个需要删除的set
 		Set<BodyItem> removeBodyItems = new LinkedHashSet<>();
+
+		final boolean[] isHappenLeftRecursion = {false};
+
+		// 检查如果被替换，是否会发生左递归
+		replacedPro.getBodies().forEach(item -> {
+			if (item.getSubItems().getFirst().getValue().equals(currentNonTer)) {
+				isHappenLeftRecursion[0] = true;
+			}
+		});
+
+		// 不会发生左递归，直接返回，不需要替换
+		if (!isHappenLeftRecursion[0]) return ;
 
 		currentPro.getBodies().forEach(item -> {
 			// 当前产生式的首项可以被替换
@@ -208,9 +226,9 @@ public class CFG {
 		Set<BodyItem> newBodySets = new LinkedHashSet<>();
 		startWithOther.forEach(item -> {
 			BodyItem _bodyItem = new BodyItem();
-			if (_bodyItem.getSubItems().size() == 1 &&
-					_bodyItem.getSubItems().getFirst().getValue().equals("ε")) {
-				// 如果当前bodyItem只能推出 ε,则只追加一个apNonTerminal
+			if (item.getSubItems().size() == 1 &&
+					item.getSubItems().getFirst().getValue().equals("ε")) {
+				// 如果当前item只能推出 ε,则只追加一个apNonTerminal
 				// 否则，还需追加item的所有项
 			} else _bodyItem.getSubItems().addAll(item.getSubItems());
 

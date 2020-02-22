@@ -1,0 +1,10 @@
+productions --------------------------------------
+expr -> term expr`
+factor -> number | ( expr )
+number -> digits optionalFraction
+optionalFraction -> . digits | ε
+digits -> digit digits | digit
+digit -> 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
+term -> factor term`
+expr` -> + term expr` | - term expr` | ε
+term` -> * factor term` | / factor term` | ε

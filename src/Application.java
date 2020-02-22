@@ -10,7 +10,9 @@ public class Application {
 		FileUtils utils = FileUtils.getInstance();
 		System.out.println(utils.getProjectPath());
 
-		CFG cfg = new CFGBuilder(utils.getProjectPath() + "/src/data/CFG_4").build();
+		String currentFile = "/src/data/output/CFG_1";
+		CFG cfg = new CFGBuilder(utils.getProjectPath() + "/src/data/CFG_1").build();
 		cfg.eliminateLeftRecursion();
+		utils.appendWrite(utils.getProjectPath() + currentFile, cfg.getProductionsString());
 	}
 }

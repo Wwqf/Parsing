@@ -1,8 +1,4 @@
-expr -> expr + term
-expr -> expr - term
-expr -> term
-term -> term * factor
-term -> term / factor
-term -> factor
+expr -> expr + term | expr - term | term
 factor -> number
 factor -> ( expr )
+term -> term * factor | term / factor | factor

@@ -1,2 +1,2 @@
-A -> A c | S d | ε
 S -> A a | b
+A -> A c | S d | ε

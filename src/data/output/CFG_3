@@ -1,0 +1,40 @@
+productions --------------------------------------
+A -> S d A` | ε A`
+S -> b S` | ε A` a S`
+A` -> c A` | ε
+S` -> d A` a S` | ε
+productions --------------------------------------
+A -> S d A` | ε A`
+S -> b S` | ε A` a S`
+A` -> c A` | ε
+S` -> d A` a S` | ε
+productions --------------------------------------
+A -> S d A` | ε A`
+S -> b S` | ε A` a S`
+A` -> c A` | ε
+S` -> d A` a S` | ε
+productions --------------------------------------
+A -> S d A` | A`
+S -> b S` | A` a S`
+A` -> c A` | ε
+S` -> d A` a S` | ε
+productions --------------------------------------
+A -> S d A` | A`
+S -> b S` | A` a S`
+A` -> c A` | ε
+S` -> d A` a S` | ε
+productions --------------------------------------
+A -> S d A` | A`
+S -> b S` | A` a S`
+A` -> c A` | ε
+S` -> d A` a S` | ε
+productions --------------------------------------
+A -> S d A` | A`
+S -> b S` | A` a S`
+A` -> c A` | ε
+S` -> d A` a S` | ε
+productions --------------------------------------
+A -> S d A` | A`
+S -> b S` | A` a S`
+A` -> c A` | ε
+S` -> d A` a S` | ε
