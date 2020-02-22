@@ -1,6 +1,7 @@
 package struct.production;
 
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 /**
@@ -8,7 +9,7 @@ import java.util.Set;
  */
 public class ProductionSet {
 	public boolean hasEpsilon = false;
-	private Set<BodyItem> bodies = new HashSet<>();
+	private Set<BodyItem> bodies = new LinkedHashSet<>();
 
 	public void addBody(BodyItem bodyItem) {
 		bodies.add(bodyItem);

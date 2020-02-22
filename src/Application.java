@@ -8,9 +8,9 @@ public class Application {
 	public static void main(String[] args) {
 
 		FileUtils utils = FileUtils.getInstance();
+		System.out.println(utils.getProjectPath());
 
-		CFG cfg = new CFGBuilder(utils.getProjectPath() + "/src/data/CFG_1").build();
+		CFG cfg = new CFGBuilder(utils.getProjectPath() + "/src/data/CFG_4").build();
 		cfg.eliminateLeftRecursion();
-		System.out.println();
 	}
 }

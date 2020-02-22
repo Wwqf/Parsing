@@ -44,21 +44,94 @@ public class CFG {
 
 	/**
 	 * 消除左递归
+	 *      S -> A a | b
+	 *      A -> A c | S d | c
+	 *
+	 * 1. 替换产生式体中的下界
+	 *      A -> A c | A a d | b d | c
+	 * 2. 消除直接左递归
+	 *     A -> b d A` | c A`
+	 *     A` -> c A` | a d A` | ε
+	 *
+	 * 变化产生式的顺序，导致消除左递归的结果不同，是否正常？
 	 */
 	public void eliminateLeftRecursion() {
 		Object[] list = nonTerminals.toArray();
 		for (int i = 0; i < list.length; i++) {
 			for (int j = 0; j < i; j++) {
-
+				replaceProduction(String.valueOf(list[i]), String.valueOf(list[j]));
 			}
 			eliminateImmediateLeftRecursion(String.valueOf(list[i]));
-			System.out.println();
 		}
+
+		System.out.println(this.toString());
+	}
+
+	/**
+	 * 将Ai -> Ajγ 的产生式替换为产生式组 Ai -> δ1γ | δ2γ ...
+	 * 其中 Aj -> δ1 | δ2 ...
+	 *
+	 * 有两种情况，一种是替换后没有立即左递归，一种是替换后有立即左递归。
+	 * 如果没有，则不更新productions
+	 *
+	 * 考虑一件事：需不需要在源Set中操作，即如果在源Set中发生改变，会不会影响之后的结果？
+	 * @param currentNonTer
+	 * @param replacedNonTer
+	 */
+	private void replaceProduction(String currentNonTer, String replacedNonTer) {
+		ProductionSet currentPro = productions.get(currentNonTer);
+		ProductionSet replacedPro = productions.get(replacedNonTer);
+
+		// 不能在遍历时删除对象，所以创建一个需要删除的set
+		Set<BodyItem> removeBodyItems = new LinkedHashSet<>();
+
+		currentPro.getBodies().forEach(item -> {
+			// 当前产生式的首项可以被替换
+			if (item.getSubItems().getFirst().getValue().equals(replacedNonTer)) {
+				// 1. 从列表中删除此产生式
+				removeBodyItems.add(item);
+			}
+		});
+
+		// 2. 然后替换产生式
+		removeBodyItems.forEach(item -> {
+			// 先移除
+			currentPro.getBodies().remove(item);
+			// 删除首项
+			item.getSubItems().removeFirst();
+			// 替换产生式
+			replacedPro.getBodies().forEach(rpItem -> {
+				/*
+				 * Todo e.g.
+				 *  currentNonTer >> A
+				 *  replacedNonTer >> S
+				 *
+				 * 	 S -> A a | b
+				 * 	 A -> A c | S d | c
+				 *
+				 *  1. 先移除A中的S d
+				 *      A -> A c | c
+				 *  2. 将S d中的S移除（需要替换），只剩下d (其实就是步骤3)
+				 *
+				 *  3. 替换S d中的S (对于S中每一项都要替换)
+				 *      A a d | b d
+				 *  4. 然后添加到A的产生式集中
+				 *      A -> A c | A a d | b d | c
+				 *  5. 然后消除立即左递归
+				 */
+
+				BodyItem bodyItem = new BodyItem();
+				bodyItem.getSubItems().addAll(rpItem.getSubItems());
+				bodyItem.getSubItems().addAll(item.getSubItems());
+				bodyItem.resetBodyStr();
+				currentPro.getBodies().add(bodyItem);
+			});
+		});
 	}
 
 	/**
 	 * 消除立即左递归
-	 *  S -> S a | b | c d | S S c
+	 *      S -> S a | b | c d | S S c
 	 *
 	 *  1. 先分组
 	 *      S -> S a | S S c | b | c d
@@ -99,7 +172,7 @@ public class CFG {
 		/*
 		 * 新增 nonTer`
 		 */
-		Set<BodyItem> newBodyItemSets = new HashSet<>();
+		Set<BodyItem> newBodyItemSets = new LinkedHashSet<>();
 		startWithNonTerminal.forEach(item -> {
 			BodyItem bodyItem = new BodyItem();
 			// 移除第一项（即该左递归的非终结符）
@@ -132,7 +205,7 @@ public class CFG {
 		/*
 		 * 替换
 		 */
-		Set<BodyItem> newBodySets = new HashSet<>();
+		Set<BodyItem> newBodySets = new LinkedHashSet<>();
 		startWithOther.forEach(item -> {
 			BodyItem _bodyItem = new BodyItem();
 			if (_bodyItem.getSubItems().size() == 1 &&
@@ -150,5 +223,66 @@ public class CFG {
 		productionSet.hasEpsilon = false;
 		productionSet.setBodies(newBodySets);
 		productions.put(nonTer, productionSet);
+	}
+
+	public void printCFG() {
+
+	}
+
+	@Override
+	public String toString() {
+		return getNonTerminalsString() + '\n' +
+				getTerminalsString() + '\n' +
+				getStartSymbolString() + '\n' +
+				getProductionsString();
+	}
+
+
+	public String getNonTerminalsString() {
+		StringBuilder builder = new StringBuilder();
+		builder.append("nonTerminals --------------------------------------\n");
+		final int[] len = {0};
+		nonTerminals.forEach(item -> {
+			builder.append('[').append(item).append(']').append(' ');
+			if (++len[0] % 5 == 0) builder.append('\n');
+		});
+		builder.append('\n');
+		return builder.toString();
+	}
+
+	public String getTerminalsString() {
+		StringBuilder builder = new StringBuilder();
+		builder.append("terminals --------------------------------------\n");
+		terminals.forEach(item -> {
+			builder.append(item).append(' ');
+		});
+
+		builder.append('\n');
+		return builder.toString();
+	}
+
+	public String getStartSymbolString() {
+		return "Start Symbol --------------------------------------\n" +
+				startSymbol + '\n';
+	}
+
+	public String getProductionsString() {
+		StringBuilder builder = new StringBuilder();
+		builder.append("productions --------------------------------------\n");
+		Set<Map.Entry<String, ProductionSet>> entry = productions.entrySet();
+
+		entry.forEach(stringSetEntry -> {
+			String keys = stringSetEntry.getKey();
+			ProductionSet values = stringSetEntry.getValue();
+
+			builder.append(keys).append(" -> ");
+
+			values.getBodies().forEach(item -> {
+				builder.append(item.getBodyStr()).append(" | ");
+			});
+			builder.delete(builder.length() - 3, builder.length());
+			builder.append('\n');
+		});
+		return builder.toString();
 	}
 }
