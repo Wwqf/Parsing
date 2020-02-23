@@ -17,6 +17,10 @@ public class BodyItem {
 	}
 
 	public void resetBodyStr() {
+		if (subItems.isEmpty()) {
+			bodyStr = "";
+			return ;
+		}
 		StringBuilder builder = new StringBuilder();
 
 		for (int i = 0; i < subItems.size() - 1; i++) {
@@ -41,5 +45,9 @@ public class BodyItem {
 
 	public LinkedList<BodySubItem> getSubItems() {
 		return subItems;
+	}
+
+	public boolean checkCommonFactor(BodyItem other) {
+		return other.getSubItems().getFirst().getValue().equals(this.getSubItems().getFirst().getValue());
 	}
 }

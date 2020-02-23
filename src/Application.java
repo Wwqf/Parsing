@@ -10,9 +10,10 @@ public class Application {
 		FileUtils utils = FileUtils.getInstance();
 		System.out.println(utils.getProjectPath());
 
-		String currentFile = "/src/data/output/CFG_1";
-		CFG cfg = new CFGBuilder(utils.getProjectPath() + "/src/data/CFG_1").build();
+		CFG cfg = new CFGBuilder(utils.getProjectPath() + "/src/data/CFG_2").build();
+//		cfg.extractLeftCommonFactor();
+		System.out.println(cfg.getProductionsString());
 		cfg.eliminateLeftRecursion();
-		utils.appendWrite(utils.getProjectPath() + currentFile, cfg.getProductionsString());
+		System.out.println(cfg.getProductionsString());
 	}
 }
