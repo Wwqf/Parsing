@@ -1,5 +1,6 @@
 import algorithm.FirstSet;
 import algorithm.FollowSet;
+import algorithm.SelectSet;
 import io.*;
 import io.callback.IOArrayCallback;
 import io.write.ArrayWriteContent;
@@ -12,7 +13,7 @@ public class Application {
 		FileUtils utils = FileUtils.getInstance();
 		System.out.println(utils.getProjectPath());
 
-		CFG cfg = new CFGBuilder(utils.getProjectPath() + "/src/data/CFG_2").build();
+		CFG cfg = new CFGBuilder(utils.getProjectPath() + "/src/data/CFG_6").build();
 		cfg.extractLeftCommonFactor();
 		System.out.println(cfg.getProductionsString());
 		cfg.eliminateLeftRecursion();
@@ -24,5 +25,8 @@ public class Application {
 		System.out.println("\n\nFollowSet:-");
 		FollowSet followSet = new FollowSet(cfg, firstSet);
 		followSet.getFollowSet();
+		System.out.println("\n\nSelectSet:-");
+		SelectSet selectSet = new SelectSet(cfg, firstSet, followSet);
+		selectSet.getSelectSet();
 	}
 }

@@ -4,16 +4,21 @@ import log.IOColor;
 import struct.CFG;
 import struct.production.BodyItem;
 import struct.production.BodySubItem;
+import struct.production.BodySubItemAttrType;
 import struct.production.ProductionSet;
 
 import java.util.*;
 
+/**
+ * Todo bug
+ */
 public class FirstSet {
 
 	private CFG cfg;
 	// nonTerminal -> {terminal Symbol}
 	private Map<String, Set<String>> firstSet;
 
+	private Map<BodyItem, Set<String>> bodyItemFirstSet = new HashMap<>();
 	private boolean isUpdated = false;
 
 	public FirstSet(CFG cfg) {
@@ -24,8 +29,9 @@ public class FirstSet {
 	public Map<String, Set<String>> getFirstSet() {
 		if (isUpdated) return firstSet;
 
+		Map<String, Set<String>> backup = new HashMap<>();
 		for (String nonTerminal : cfg.getNonTerminals()) {
-			Set<String> rec = calculationFirstSet(new HashMap<>(), nonTerminal);
+			Set<String> rec = calculationFirstSet(backup, nonTerminal);
 			if (rec != null) {
 				System.out.println(nonTerminal + " -> " + rec);
 				firstSet.put(nonTerminal, rec);
@@ -47,6 +53,8 @@ public class FirstSet {
 
 		Set<String> result = new HashSet<>();
 		for (BodyItem item : productionSet.getBodies()) {
+			Set<String> itemFirstSet = new HashSet<>();
+
 			String firstSubItem = item.getSubItems().getFirst().getValue();
 			if (cfg.getNonTerminals().contains(firstSubItem)) {
 
@@ -55,8 +63,9 @@ public class FirstSet {
 					BodySubItem subItem = iterator.next();
 
 					// 如果是终结符，添加到result中，并且跳出循环
-					if (cfg.getTerminals().contains(subItem.getValue())) {
+					if (subItem.getAttr() == BodySubItemAttrType.terminal) {
 						result.add(subItem.getValue());
+						itemFirstSet.add(subItem.getValue());
 						break;
 					}
 
@@ -71,17 +80,22 @@ public class FirstSet {
 
 					backup.put(subItem.getValue(), rec);
 					result.addAll(rec);
+					itemFirstSet.addAll(rec);
 
 					if (!rec.contains("ε")) {
 						// 如果当前子项不能推导出epsilon, 则当前项已经结束
 						result.addAll(rec);
+						itemFirstSet.addAll(rec);
 						break;
 					}
 
 				}
-			} else if (cfg.getTerminals().contains(firstSubItem)) {
+			} else {
 				result.add(firstSubItem);
+				itemFirstSet.add(firstSubItem);
 			}
+
+			bodyItemFirstSet.put(item, itemFirstSet);
 		}
 		return result;
 	}
@@ -119,6 +133,10 @@ public class FirstSet {
 
 	public void setUpdated(boolean updated) {
 		isUpdated = updated;
+	}
+
+	public Map<BodyItem, Set<String>> getBodyItemFirstSet() {
+		return bodyItemFirstSet;
 	}
 }
 

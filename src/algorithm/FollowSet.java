@@ -202,6 +202,8 @@ public class FollowSet {
 		 * 	Todo but!
 		 * 	 这样很消耗空间，如果假定只存在对立环，还是只用String updater好了。
 		 * 	 时间复杂度应当差不了太多，毕竟Set以hash值判断.
+		 *
+		 * 	 对立环存在是因为文法的二义性
 		 */
 		Set<String> updater = new HashSet<>();
 
