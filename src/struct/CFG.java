@@ -12,7 +12,7 @@ import java.util.*;
  */
 public class CFG {
 
-	private static final char appendChar = '`';
+	private static final char appendChar = '\'';
 
 	// Non-terminal Set
 	public Set<String> nonTerminals;
@@ -46,6 +46,29 @@ public class CFG {
 		});
 
 		productions.putAll(appProductions);
+	}
+
+	/**
+	 * 消除左递归
+	 *      S -> A a | b
+	 *      A -> A c | S d | c
+	 *
+	 * 1. 替换产生式体中的下界
+	 *      A -> A c | A a d | b d | c
+	 * 2. 消除直接左递归
+	 *     A -> b d A` | c A`
+	 *     A` -> c A` | a d A` | ε
+	 *
+	 * 变化产生式的顺序，导致消除左递归的结果不同，是否正常？
+	 */
+	public void eliminateLeftRecursion() {
+		Object[] list = nonTerminals.toArray();
+		for (int i = 0; i < list.length; i++) {
+			for (int j = 0; j < i; j++) {
+				replaceProduction(String.valueOf(list[i]), String.valueOf(list[j]));
+			}
+			eliminateImmediateLeftRecursion(String.valueOf(list[i]));
+		}
 	}
 
 	/**
@@ -221,6 +244,7 @@ public class CFG {
 					});
 
 					mayExist[0] = false;
+					return ;
 				}
 
 				if (item.getSubItems().getFirst().getValue()
@@ -244,29 +268,6 @@ public class CFG {
 		}
 
 		return commonFactors;
-	}
-
-	/**
-	 * 消除左递归
-	 *      S -> A a | b
-	 *      A -> A c | S d | c
-	 *
-	 * 1. 替换产生式体中的下界
-	 *      A -> A c | A a d | b d | c
-	 * 2. 消除直接左递归
-	 *     A -> b d A` | c A`
-	 *     A` -> c A` | a d A` | ε
-	 *
-	 * 变化产生式的顺序，导致消除左递归的结果不同，是否正常？
-	 */
-	public void eliminateLeftRecursion() {
-		Object[] list = nonTerminals.toArray();
-		for (int i = 0; i < list.length; i++) {
-			for (int j = 0; j < i; j++) {
-				replaceProduction(String.valueOf(list[i]), String.valueOf(list[j]));
-			}
-			eliminateImmediateLeftRecursion(String.valueOf(list[i]));
-		}
 	}
 
 	/**
@@ -439,8 +440,7 @@ public class CFG {
 		productions.put(nonTer, productionSet);
 	}
 
-	@Override
-	public String toString() {
+	public String cfgString() {
 		return getNonTerminalsString() + '\n' +
 				getTerminalsString() + '\n' +
 				getStartSymbolString() + '\n' +
@@ -494,5 +494,22 @@ public class CFG {
 			builder.append('\n');
 		});
 		return builder.toString();
+	}
+
+
+	public Set<String> getNonTerminals() {
+		return nonTerminals;
+	}
+
+	public Set<String> getTerminals() {
+		return terminals;
+	}
+
+	public String getStartSymbol() {
+		return startSymbol;
+	}
+
+	public Map<String, ProductionSet> getProductions() {
+		return productions;
 	}
 }
