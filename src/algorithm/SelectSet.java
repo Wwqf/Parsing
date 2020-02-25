@@ -15,7 +15,10 @@ public class SelectSet {
 	private Map<String, Set<String>> firstSet;
 	private Map<BodyItem, Set<String>> bodyItemFirstSet;
 	private Map<String, Set<String>> followSet;
-	private Map<String, Map<String, Set<BodyItem>>> selectSet;
+	// 因为有的文法存在二义性（但是包含二义性的文法不是LL文法），所以用Set存储，而不是单个BodyItem
+//	private Map<String, Map<String, Set<BodyItem>>> selectSet;
+
+	private Map<String, Map<String, BodyItem>> selectSet;
 
 	private boolean isUpdated = false;
 
@@ -27,17 +30,11 @@ public class SelectSet {
 		this.selectSet = new HashMap<>();
 	}
 
-	public Map<String, Map<String, Set<BodyItem>>> getSelectSet() {
+	public Map<String, Map<String, BodyItem>> getSelectSet() {
 		if (isUpdated) return selectSet;
 
 		for (String nonTerminal : cfg.getNonTerminals()) {
 			traversalProductionSet(nonTerminal);
-			System.out.println("\t" + nonTerminal + ":");
-			Map<String, Set<BodyItem>> item = selectSet.get(nonTerminal);
-			item.forEach((key, value) -> {
-				System.out.print("{" + key + ", " + value + "}\t");
-			});
-			System.out.println();
 		}
 
 		isUpdated = true;
@@ -51,7 +48,7 @@ public class SelectSet {
 		productionSet.getBodies().forEach(bodyItem -> {
 			Set<String> itemFirstSet = bodyItemFirstSet.get(bodyItem);
 
-			Map<String, Set<BodyItem>> selectItem = selectSet.get(nonTerminal);
+			Map<String, BodyItem> selectItem = selectSet.get(nonTerminal);
 			if (selectItem == null) {
 				selectItem = new HashMap<>();
 			}
@@ -59,31 +56,33 @@ public class SelectSet {
 			if (itemFirstSet.contains("ε")) {
 				Set<String> nonTerFollow = followSet.get(nonTerminal);
 				for (String terminal : nonTerFollow) {
-					Set<BodyItem> sbi = selectItem.get(terminal);
-					if (sbi == null) sbi = new HashSet<>();
-
-					sbi.add(bodyItem);
-					selectItem.put(terminal, sbi);
+					selectItem.put(terminal, bodyItem);
 				}
 
 				if (itemFirstSet.contains("$")) {
-					Set<BodyItem> sbi = selectItem.get("$");
-					if (sbi == null) sbi = new HashSet<>();
-
-					sbi.add(bodyItem);
-					selectItem.put("$", sbi);
+					selectItem.put("$", bodyItem);
 				}
 			} else {
 				for (String terminal : itemFirstSet) {
-					Set<BodyItem> sbi = selectItem.get(terminal);
-					if (sbi == null) sbi = new HashSet<>();
-
-					sbi.add(bodyItem);
-					selectItem.put(terminal, sbi);
+					selectItem.put(terminal, bodyItem);
 				}
 			}
 
 			selectSet.put(nonTerminal, selectItem);
 		});
+	}
+
+	public void printSelectSet() {
+		selectSet.forEach((key, value) -> {
+			System.out.println("\t" + key + ":");
+
+			// Map<String, BodyItem>
+			value.forEach((ter, bodyItems) -> {
+				System.out.print("{" + ter + ", " + key + " -> " + bodyItems.getBodyStr() + "}\t");
+			});
+			System.out.println();
+		});
+
+
 	}
 }

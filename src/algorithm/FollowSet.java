@@ -43,10 +43,6 @@ public class FollowSet {
 			calculationFollowSet(dependencyTrees, nonTerminal);
 		}
 
-		followSet.forEach((key, value) -> {
-			System.out.println(key + " -> " + value);
-		});
-
 		isUpdated = true;
 		return this.followSet;
 	}
@@ -251,5 +247,11 @@ public class FollowSet {
 			});
 
 		}
+	}
+
+	public void printFollowSet() {
+		followSet.forEach((key, value) -> {
+			System.out.println(key + " -> " + value);
+		});
 	}
 }

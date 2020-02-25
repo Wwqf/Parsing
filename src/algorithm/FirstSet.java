@@ -9,15 +9,13 @@ import struct.production.ProductionSet;
 
 import java.util.*;
 
-/**
- * Todo bug
- */
 public class FirstSet {
 
 	private CFG cfg;
 	// nonTerminal -> {terminal Symbol}
 	private Map<String, Set<String>> firstSet;
 
+	// 偷工减料，为求selectSet做准备
 	private Map<BodyItem, Set<String>> bodyItemFirstSet = new HashMap<>();
 	private boolean isUpdated = false;
 
@@ -33,7 +31,6 @@ public class FirstSet {
 		for (String nonTerminal : cfg.getNonTerminals()) {
 			Set<String> rec = calculationFirstSet(backup, nonTerminal);
 			if (rec != null) {
-				System.out.println(nonTerminal + " -> " + rec);
 				firstSet.put(nonTerminal, rec);
 			}
 		}
@@ -137,6 +134,12 @@ public class FirstSet {
 
 	public Map<BodyItem, Set<String>> getBodyItemFirstSet() {
 		return bodyItemFirstSet;
+	}
+
+	public void printFirstSet() {
+		firstSet.forEach((key, value) -> {
+			System.out.println(key + " -> " + value);
+		});
 	}
 }
 

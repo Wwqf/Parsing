@@ -33,6 +33,7 @@ public class Log {
 	public static void error(Object ...message) {
 		int colorCode = IOColor.RED.colorCode;
 		output(colorCode, message);
+		System.exit(-1);
 	}
 
 	private static void output(int colorCode, Object[] message) {
