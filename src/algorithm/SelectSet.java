@@ -53,9 +53,15 @@ public class SelectSet {
 				selectItem = new HashMap<>();
 			}
 
+			for (String terminal : itemFirstSet) {
+				if (terminal.equals("ε")) continue;
+				selectItem.put(terminal, bodyItem);
+			}
+
 			if (itemFirstSet.contains("ε")) {
 				Set<String> nonTerFollow = followSet.get(nonTerminal);
 				for (String terminal : nonTerFollow) {
+					if (terminal.equals("ε")) continue;
 					selectItem.put(terminal, bodyItem);
 				}
 
@@ -63,9 +69,7 @@ public class SelectSet {
 					selectItem.put("$", bodyItem);
 				}
 			} else {
-				for (String terminal : itemFirstSet) {
-					selectItem.put(terminal, bodyItem);
-				}
+
 			}
 
 			selectSet.put(nonTerminal, selectItem);

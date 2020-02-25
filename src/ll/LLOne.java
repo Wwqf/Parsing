@@ -70,12 +70,18 @@ public class LLOne {
 	}
 
 	private String getNextInput() {
-		if (buffer.nextChar() == ' ') {
-			while (buffer.nextChar() == ' ');
+		char c = buffer.nextChar();
+		if (c == ' ' || c == '\t'  || c == '\n') {
+			while (c == ' ' || c == '\t'  || c == '\n') c = buffer.nextChar();
 			buffer.nextMorpheme();
 		}
 
-		while (buffer.nextChar() != ' ' && !GlobalMark.stopLexicalAnalysis);
+		while (true) {
+			if (GlobalMark.stopLexicalAnalysis) break;
+
+			c = buffer.nextChar();
+			if (c == ' ' || c == '\t'  || c == '\n') break;
+		}
 		return buffer.nextMorpheme();
 	}
 }

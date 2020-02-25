@@ -14,7 +14,7 @@ public class Application {
 		FileUtils utils = FileUtils.getInstance();
 		System.out.println(utils.getProjectPath());
 
-		CFG cfg = new CFGBuilder(utils.getProjectPath() + "/src/data/input/CFG_5").build();
+		CFG cfg = new CFGBuilder(utils.getProjectPath() + "/src/data/input/logic.cfg").build();
 		cfg.extractLeftCommonFactor();
 		System.out.println(cfg.getProductionsString());
 		cfg.eliminateLeftRecursion();
