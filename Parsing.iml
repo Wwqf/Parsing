@@ -8,5 +8,6 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="fastjson-1.2.58" level="project" />
+    <orderEntry type="library" name="Fio" level="project" />
   </component>
 </module>

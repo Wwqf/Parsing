@@ -1,17 +1,18 @@
 package ll;
 
 import algorithm.SelectSet;
-import global.GlobalMark;
-import io.BufferIO;
-import io.FileUtils;
-import log.Log;
-import struct.CFG;
-import struct.CFGBuilder;
-import struct.production.BodyItem;
-import struct.production.BodySubItem;
-import struct.production.BodySubItemAttrType;
+import cfg.CFG;
+import cfg.production.Production;
+import cfg.production.SubItem;
+import cfg.production.SubItemType;
+import fin.BufferIO;
+import fin.Fin;
+import fout.Fout;
+import fout.attr.ColumnAttr;
+import fout.attr.FoutGravity;
+import logger.Log;
 
-import java.util.ListIterator;
+import javax.swing.*;
 import java.util.Map;
 import java.util.Stack;
 
@@ -24,49 +25,80 @@ public class LLOne {
 	private BufferIO buffer;
 
 	private CFG cfg;
-	private Map<String, Map<String, BodyItem>> selectSet;
+	private Map<String, Map<String, Production>> selectSet;
 
-	private Stack<BodySubItem> grammarStack;
+	private Stack<SubItem> grammarStack;
 
 	public LLOne(CFG cfg, SelectSet selectSet) {
 		this.cfg = cfg;
 		this.selectSet = selectSet.getSelectSet();
 
-		FileUtils utils = FileUtils.getInstance();
+		Fin utils = Fin.getInstance();
 		this.buffer = new BufferIO.Builder().setFilePath(utils.getProjectPath() + "/src/data/input/input.i").build();
 
 		grammarStack = new Stack<>();
-		grammarStack.push(new BodySubItem("$", BodySubItemAttrType.terminal));
-		grammarStack.push(new BodySubItem(cfg.startSymbol, BodySubItemAttrType.nonTerminal));
+		grammarStack.push(new SubItem("$", SubItemType.terminal));
+		grammarStack.push(new SubItem(cfg.getStartSymbol(), SubItemType.nonTerminal));
 	}
 
 	public void execute() {
-		BodySubItem subItem = grammarStack.peek();
+		Fout fout = new Fout();
+		fout.addColumn(new ColumnAttr("Matched", FoutGravity.LEFT));
+		fout.addColumn(new ColumnAttr("Stack", FoutGravity.RIGHT));
+		fout.addColumn(new ColumnAttr("Input", FoutGravity.RIGHT));
+		fout.addColumn(new ColumnAttr("Action"));
+
+
+		SubItem subItem = grammarStack.peek();
 		String inputStr = getNextInput();
 
+		String matched = "";
+		String action = "";
+		boolean isAccept = true;
 		while (!subItem.getValue().equals("$")) {
 			if (subItem.getValue().equals(inputStr)) {
-				System.out.println("匹配: " + subItem.getValue());
+				action = "match: " + subItem.getValue();
+				matched += subItem.getValue() + " ";
 				inputStr = getNextInput();
 				grammarStack.pop();
-			} else if (subItem.getAttr() == BodySubItemAttrType.terminal) {
-				Log.error("error!");
+			} else if (subItem.getType() == SubItemType.terminal) {
+//				Log.error("error!");
+				isAccept = false;
+				break;
 			} else if (selectSet.get(subItem.getValue()).get(inputStr) == null) {
-				Log.error("error!");
+//				Log.error("error!");
+				isAccept = false;
+				break;
 			} else if (selectSet.get(subItem.getValue()).get(inputStr) != null) {
-				BodyItem bodyItem = selectSet.get(subItem.getValue()).get(inputStr);
-				System.out.println("输出: " + subItem.getValue() + " -> " + bodyItem.getBodyStr());
+				Production production = selectSet.get(subItem.getValue()).get(inputStr);
+				action = "output: " + subItem.getValue() + " -> " + production.getProductionStr();
 				grammarStack.pop();
 
-				Object[] iter = bodyItem.getSubItems().toArray();
+				Object[] iter = production.getSubItems().toArray();
 				for (int i = iter.length - 1; i >= 0; i--) {
-					if (!((BodySubItem)iter[i]).getValue().equals("ε"))
-						grammarStack.push((BodySubItem)iter[i]);
+					if (!((SubItem)iter[i]).getValue().equals("ε"))
+						grammarStack.push((SubItem)iter[i]);
 				}
 			}
-
+			recordProcess(fout, matched, inputStr, action);
 			subItem = grammarStack.peek();
 		}
+
+		if (isAccept) {
+			fout.insertln("success", "success!", "success!", "success!");
+		} else {
+			fout.insertln("failed.", "failed.", "failed.", "failed.");
+		}
+		fout.fout();
+	}
+
+	public void recordProcess(Fout fout, String matched, String morpheme, String action) {
+		StringBuilder stack = new StringBuilder();
+		for (SubItem subItem : grammarStack) {
+			stack.insert(0, subItem.getValue() + " ");
+		}
+		String bufStr = buffer.getCurrentBufferString();
+		fout.insertln(matched, stack.toString(), morpheme + bufStr, action);
 	}
 
 	private String getNextInput() {
@@ -77,7 +109,7 @@ public class LLOne {
 		}
 
 		while (true) {
-			if (GlobalMark.stopLexicalAnalysis) break;
+			if (BufferIO.stopLexicalAnalysis) break;
 
 			c = buffer.nextChar();
 			if (c == ' ' || c == '\t'  || c == '\n') break;

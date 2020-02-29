@@ -1,11 +1,12 @@
 package algorithm;
 
-import log.IOColor;
-import struct.CFG;
-import struct.production.BodyItem;
-import struct.production.BodySubItem;
-import struct.production.BodySubItemAttrType;
-import struct.production.ProductionSet;
+import cfg.CFG;
+import cfg.production.Production;
+import cfg.production.ProductionGroup;
+import cfg.production.SubItem;
+import cfg.production.SubItemType;
+import fout.Fout;
+import fout.attr.ColumnAttr;
 
 import java.util.*;
 
@@ -16,18 +17,18 @@ public class FirstSet {
 	private Map<String, Set<String>> firstSet;
 
 	// 偷工减料，为求selectSet做准备
-	private Map<BodyItem, Set<String>> bodyItemFirstSet = new HashMap<>();
+	private Map<String, Set<String>> productionFirstSet = new LinkedHashMap<>();
 	private boolean isUpdated = false;
 
 	public FirstSet(CFG cfg) {
 		this.cfg = cfg;
-		firstSet = new HashMap<>();
+		firstSet = new LinkedHashMap<>();
 	}
 
 	public Map<String, Set<String>> getFirstSet() {
 		if (isUpdated) return firstSet;
 
-		Map<String, Set<String>> backup = new HashMap<>();
+		Map<String, Set<String>> backup = new LinkedHashMap<>();
 		for (String nonTerminal : cfg.getNonTerminals()) {
 			Set<String> rec = calculationFirstSet(backup, nonTerminal);
 			if (rec != null) {
@@ -45,22 +46,22 @@ public class FirstSet {
 	 * @return
 	 */
 	private Set<String> calculationFirstSet(Map<String, Set<String>> backup, String nonTerminal) {
-		ProductionSet productionSet = cfg.getProductions().get(nonTerminal);
-		if (productionSet == null) return null;
+		ProductionGroup productionGroup = cfg.getProductionGroupMap().get(nonTerminal);
+		if (productionGroup == null) return null;
 
-		Set<String> result = new HashSet<>();
-		for (BodyItem item : productionSet.getBodies()) {
+		Set<String> result = new LinkedHashSet<>();
+		for (Production item : productionGroup.getProductions()) {
 			Set<String> itemFirstSet = new HashSet<>();
 
 			String firstSubItem = item.getSubItems().getFirst().getValue();
 			if (cfg.getNonTerminals().contains(firstSubItem)) {
 
-				ListIterator<BodySubItem> iterator = item.getSubItems().listIterator(0);
+				ListIterator<SubItem> iterator = item.getSubItems().listIterator(0);
 				while (iterator.hasNext()) {
-					BodySubItem subItem = iterator.next();
+					SubItem subItem = iterator.next();
 
 					// 如果是终结符，添加到result中，并且跳出循环
-					if (subItem.getAttr() == BodySubItemAttrType.terminal) {
+					if (subItem.getType() == SubItemType.terminal) {
 						result.add(subItem.getValue());
 						itemFirstSet.add(subItem.getValue());
 						break;
@@ -92,25 +93,25 @@ public class FirstSet {
 				itemFirstSet.add(firstSubItem);
 			}
 
-			bodyItemFirstSet.put(item, itemFirstSet);
+			productionFirstSet.put(item.getProductionStr(), itemFirstSet);
 		}
 		return result;
 	}
 
 	/**
-	 *检查nonTerminal能否经过一步或多步推出ε
+	 * 检查nonTerminal能否经过一步或多步推出ε
 	 *
 	 * Todo 如果两个产生式成环，可能会栈溢出
 	 * @param nonTerminal
 	 * @return
 	 */
 	private boolean canDerivationEpsilon(String nonTerminal) {
-		ProductionSet productionSet = cfg.getProductions().get(nonTerminal);
-		if (productionSet == null) return false;
+		ProductionGroup productionGroup = cfg.getProductionGroupMap().get(nonTerminal);
+		if (productionGroup == null) return false;
 
 		boolean result = false;
 
-		for (BodyItem item : productionSet.getBodies()) {
+		for (Production item : productionGroup.getProductions()) {
 			String firstSubItem = item.getSubItems().getFirst().getValue();
 			if (cfg.getNonTerminals().contains(firstSubItem)) {
 				// 是一个非终结符, 则递归检查该终结符能否推导出
@@ -132,14 +133,14 @@ public class FirstSet {
 		isUpdated = updated;
 	}
 
-	public Map<BodyItem, Set<String>> getBodyItemFirstSet() {
-		return bodyItemFirstSet;
+	public Map<String, Set<String>> getProductionFirstSet() {
+		return productionFirstSet;
 	}
 
 	public void printFirstSet() {
-		firstSet.forEach((key, value) -> {
-			System.out.println(key + " -> " + value);
-		});
+		Fout fout = new Fout(ColumnAttr.qCreate("NonTerminal", "FirstSet"));
+		firstSet.forEach((key, value) -> fout.insertln(key, value));
+		fout.fout();
 	}
 }
 

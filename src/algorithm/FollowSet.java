@@ -1,12 +1,12 @@
 package algorithm;
 
-import javafx.beans.binding.SetExpression;
-import log.Log;
-import struct.CFG;
-import struct.production.BodyItem;
-import struct.production.BodySubItem;
-import struct.production.BodySubItemAttrType;
-import struct.production.ProductionSet;
+import cfg.CFG;
+import cfg.production.Production;
+import cfg.production.ProductionGroup;
+import cfg.production.SubItem;
+import cfg.production.SubItemType;
+import fout.Fout;
+import fout.attr.ColumnAttr;
 
 import java.util.*;
 
@@ -23,7 +23,7 @@ public class FollowSet {
 
 	public FollowSet(CFG cfg, FirstSet firstSet) {
 		this.cfg = cfg;
-		followSet = new HashMap<>();
+		followSet = new LinkedHashMap<>();
 		this.firstSet = firstSet.getFirstSet();
 
 		// 添加输入右端结束标记
@@ -36,7 +36,7 @@ public class FollowSet {
 		if (isUpdated) return followSet;
 
 		Map<String, DependencyTree> dependencyTrees = new HashMap<>();
-		DependencyTree startSymDepTree = registerDependencyTree(dependencyTrees, cfg.startSymbol);
+		DependencyTree startSymDepTree = registerDependencyTree(dependencyTrees, cfg.getStartSymbol());
 		startSymDepTree.addFollowSym(InputRightEndSym);
 
 		for (String nonTerminal : cfg.getNonTerminals()) {
@@ -48,7 +48,7 @@ public class FollowSet {
 	}
 
 	private void calculationFollowSet(Map<String, DependencyTree> dependencyTrees, String nonTerminal) {
-		ProductionSet productionSet = cfg.getProductions().get(nonTerminal);
+		ProductionGroup productionGroup = cfg.getProductionGroupMap().get(nonTerminal);
 
 		DependencyTree nonTerDepTree = dependencyTrees.get(nonTerminal);
 		if (nonTerDepTree == null) {
@@ -57,30 +57,29 @@ public class FollowSet {
 		}
 
 		// 1. 外层循环控制一个产生式体
-		for (BodyItem bodyItem : productionSet.getBodies()) {
-			ListIterator<BodySubItem> iterator = bodyItem.getSubItems().listIterator(0);
+		for (Production item : productionGroup.getProductions()) {
+			ListIterator<SubItem> iterator = item.getSubItems().listIterator(0);
 
 			// 2. 内层循环遍历当前产生式体的子项
 			while (iterator.hasNext()) {
-				ListIterator<BodySubItem> it = bodyItem.getSubItems().listIterator(iterator.nextIndex());
+				ListIterator<SubItem> it = item.getSubItems().listIterator(iterator.nextIndex());
 				recursiveQuery(dependencyTrees, nonTerminal, it);
 				iterator.next();
 			}
-
 		}
 
 		// 到这里，已经检查完了
 		dependencyTrees.forEach((key, value) -> followSet.put(key, value.curFollowSet));
 	}
 
-	private void recursiveQuery(Map<String, DependencyTree> dependencyTrees, String nonTerminal, ListIterator<BodySubItem> iterator) {
+	private void recursiveQuery(Map<String, DependencyTree> dependencyTrees, String nonTerminal, ListIterator<SubItem> iterator) {
 		// 如果迭代器没有下一个选项，退出递归
 		if (!iterator.hasNext()) return ;
 
-		BodySubItem subItem = iterator.next();
+		SubItem subItem = iterator.next();
 
 		// 如果当前子项是非终结符
-		if (subItem.getAttr() == BodySubItemAttrType.nonTerminal) {
+		if (subItem.getType() == SubItemType.nonTerminal) {
 
 			// 获取当前子项的follow集
 			DependencyTree curSubItemDepTree = registerDependencyTree(dependencyTrees, subItem.getValue());
@@ -104,8 +103,8 @@ public class FollowSet {
 				while (iterator.hasNext()) {
 
 					// 判断下一子项是非终结符还是终结符
-					BodySubItem nextSubItem = iterator.next();
-					if (nextSubItem.getAttr() == BodySubItemAttrType.terminal) {
+					SubItem nextSubItem = iterator.next();
+					if (nextSubItem.getType() == SubItemType.terminal) {
 						// 如果是终结符，则将该终结符加入到Follow集
 						curSubItemDepTree.addFollowSym(nextSubItem.getValue());
 						exit_abnormally = true;
@@ -250,8 +249,8 @@ public class FollowSet {
 	}
 
 	public void printFollowSet() {
-		followSet.forEach((key, value) -> {
-			System.out.println(key + " -> " + value);
-		});
+		Fout fout = new Fout(ColumnAttr.qCreate("NonTerminal", "FollowSet"));
+		followSet.forEach((key, value) -> fout.insertln(key, value));
+		fout.fout();
 	}
 }

@@ -1,36 +1,36 @@
 package algorithm;
 
-import struct.CFG;
-import struct.production.BodyItem;
-import struct.production.ProductionSet;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import cfg.CFG;
+import cfg.production.Production;
+import cfg.production.ProductionGroup;
+import fout.Fout;
+import fout.attr.ColumnAttr;
+
+import java.util.*;
 
 public class SelectSet {
 
 	private CFG cfg;
 	private Map<String, Set<String>> firstSet;
-	private Map<BodyItem, Set<String>> bodyItemFirstSet;
+	private Map<String, Set<String>> productionFirstSet;
 	private Map<String, Set<String>> followSet;
 	// 因为有的文法存在二义性（但是包含二义性的文法不是LL文法），所以用Set存储，而不是单个BodyItem
 //	private Map<String, Map<String, Set<BodyItem>>> selectSet;
 
-	private Map<String, Map<String, BodyItem>> selectSet;
+	private Map<String, Map<String, Production>> selectSet;
 
 	private boolean isUpdated = false;
 
 	public SelectSet(CFG cfg, FirstSet firstSet, FollowSet followSet) {
 		this.cfg = cfg;
 		this.firstSet = firstSet.getFirstSet();
-		this.bodyItemFirstSet = firstSet.getBodyItemFirstSet();
+		this.productionFirstSet = firstSet.getProductionFirstSet();
 		this.followSet = followSet.getFollowSet();
-		this.selectSet = new HashMap<>();
+		this.selectSet = new LinkedHashMap<>();
 	}
 
-	public Map<String, Map<String, BodyItem>> getSelectSet() {
+	public Map<String, Map<String, Production>> getSelectSet() {
 		if (isUpdated) return selectSet;
 
 		for (String nonTerminal : cfg.getNonTerminals()) {
@@ -42,51 +42,62 @@ public class SelectSet {
 	}
 
 	private void traversalProductionSet(String nonTerminal) {
-		ProductionSet productionSet = cfg.getProductions().get(nonTerminal);
-		if (productionSet == null) return ;
+		ProductionGroup productionGroup = cfg.getProductionGroupMap().get(nonTerminal);
+		if (productionGroup == null) return;
 
-		productionSet.getBodies().forEach(bodyItem -> {
-			Set<String> itemFirstSet = bodyItemFirstSet.get(bodyItem);
+		for (Production production : productionGroup.getProductions()) {
+			Set<String> itemFirstSet = productionFirstSet.get(production.getProductionStr());
 
-			Map<String, BodyItem> selectItem = selectSet.get(nonTerminal);
+			assert itemFirstSet != null;
+
+			Map<String, Production> selectItem = selectSet.get(nonTerminal);
 			if (selectItem == null) {
-				selectItem = new HashMap<>();
+				selectItem = new LinkedHashMap<>();
 			}
 
 			for (String terminal : itemFirstSet) {
 				if (terminal.equals("ε")) continue;
-				selectItem.put(terminal, bodyItem);
+				selectItem.put(terminal, production);
 			}
 
 			if (itemFirstSet.contains("ε")) {
 				Set<String> nonTerFollow = followSet.get(nonTerminal);
 				for (String terminal : nonTerFollow) {
 					if (terminal.equals("ε")) continue;
-					selectItem.put(terminal, bodyItem);
+					selectItem.put(terminal, production);
 				}
 
 				if (itemFirstSet.contains("$")) {
-					selectItem.put("$", bodyItem);
+					selectItem.put("$", production);
 				}
-			} else {
-
 			}
-
 			selectSet.put(nonTerminal, selectItem);
-		});
+		}
 	}
 
 	public void printSelectSet() {
-		selectSet.forEach((key, value) -> {
-			System.out.println("\t" + key + ":");
+		Fout fout = new Fout(ColumnAttr.qCreate("NonTerminal", "SelectSet"));
 
-			// Map<String, BodyItem>
-			value.forEach((ter, bodyItems) -> {
-				System.out.print("{" + ter + ", " + key + " -> " + bodyItems.getBodyStr() + "}\t");
-			});
-			System.out.println();
-		});
+		Object[] terminals = cfg.getTerminals().toArray();
+		for (int i = 0; i < terminals.length; i++) {
+			if (String.valueOf(terminals[i]).equals("ε")) {
+				terminals[i] = "$";
+			}
+		}
+		fout.addSubColumn("SelectSet", ColumnAttr.qCreate(terminals));
 
+		var entry = selectSet.entrySet();
+		for (var item : entry) {
+			fout.insert(item.getKey());
 
+			var values = item.getValue();
+			for (Object str : terminals) {
+				Production p = values.get(String.valueOf(str));
+				if (p != null) fout.insert(p.getProductionStr());
+				else fout.insert("");
+			}
+		}
+
+		fout.fout();
 	}
 }
