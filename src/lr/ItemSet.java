@@ -1,100 +1,135 @@
 package lr;
 
-import cfg.CFG;
+import algorithm.FirstSet;
 import cfg.production.Production;
 import cfg.production.ProductionGroup;
 import cfg.production.SubItem;
 import cfg.production.SubItemType;
 import fout.Fout;
 import fout.attr.ColumnAttr;
+import lr.Item;
+import slr.ProductionIdGenerate;
 
 import java.util.*;
 
-/**
- * 项集
- */
 public class ItemSet {
 	public static int itemSetIdCount = -1;
 
 	// 项集的唯一标号
 	private int id;
-	// 非内核项
-	private Set<Item> lrNonKernelItems;
-	// 内核项
-	private Set<Item> lrKernelItems;
+	// 项集
+	private Set<Item> lrItems;
+
+	private ProductionIdGenerate idGenerate;
+	private FirstSet firstSet;
+
+	private boolean isClosure = false;
 
 	// goto表，key为一个非终结符或终结符，value为通过key能到达哪些项集
 	private Map<String, ItemSet> gotoTables = new HashMap<>();
-	// key为产生式编号（productionId），value为此编号对应的pointPos位置
-	// 即，在项集中可能存在同一个产生式，但是·的位置不一样
-	private Map<Integer, Set<Integer>> productionPointPosSet;
 
-	private ProductionIdGenerate idGenerate;
-
-	public ItemSet(ProductionIdGenerate idGenerate) {
+	public ItemSet(ProductionIdGenerate idGenerate, FirstSet firstSet) {
 		this.id = ++itemSetIdCount;
 		this.idGenerate = idGenerate;
-		lrNonKernelItems = new LinkedHashSet<>();
-		lrKernelItems = new LinkedHashSet<>();
-		productionPointPosSet = new HashMap<>();
+		this.firstSet = firstSet;
+		this.lrItems = new LinkedHashSet<>();
 	}
 
-	/**
-	 *
-	 * @param item
-	 * @return
-	 */
 	public ItemSet addItem(Item item) {
-		if (item.getPointPos() == 0) lrNonKernelItems.add(item);
-		else lrKernelItems.add(item);
-		addProductionPointPosSet(item);
+		lrItems.add(item);
 		return this;
 	}
 
 	/**
-	 * 开始符号调用添加到内核项
+	 * 为相同核心的项合并lookhead，此方法为LALR构造时使用
 	 * @param item
 	 * @return
 	 */
-	public ItemSet addKernelLRItem(Item item) {
-		lrKernelItems.add(item);
-		addProductionPointPosSet(item);
+	public ItemSet addItemCoreLookhead(Item item) {
+		boolean has = false;
+		for (Item lrItem : lrItems) {
+			if (lrItem.equalsCore(item)) {
+				lrItem.getLookheads().addAll(item.getLookheads());
+				has = true;
+				break;
+			}
+		}
+
+		if (!has) {
+			lrItems.add(item);
+		}
 		return this;
 	}
 
+	/**
+	 * [A -> α·Bβ, a]
+	 * B -> expectSubItem
+	 * β -> lookheadSubItem
+	 *
+	 * 如果β为非终结符，获取β的first集，然后设置新的item的第二分量是first成员；（自生lookhead）
+	 * 如果β为终结符，当此终结符不为ε时，不产生新的item，如果为ε，则继承a（继承lookhead）
+	 */
 	public void closure() {
+		if (isClosure) return ;
 
-		Queue<Item> queue = new LinkedList<>();
-		queue.addAll(lrKernelItems);
-		queue.addAll(lrNonKernelItems);
-		// 标志位，某个非终结符是否已经添加过了
-		Set<String> alreadyAdds = new HashSet<>();
+		Queue<Item> queue = new LinkedList<>(lrItems);
 
 		while (!queue.isEmpty()) {
 			Item item = queue.poll();
+
 			SubItem expect = item.getExpectSubItem();
+			if (expect != null) {
+				// 如果是终结符，跳过
+				if (expect.getType() == SubItemType.terminal) continue;
 
-			// 如果可以进行 ‘移入’ & 是非终结符 & 没有添加过
-			if (expect != null &&
-					expect.getType() == SubItemType.nonTerminal &&
-					!alreadyAdds.contains(expect.getValue())) {
-				// 添加flag
-				alreadyAdds.add(expect.getValue());
+				// 非终结符，获取该非终结符对应的产生式集，断言产生式不可能为null
+				ProductionGroup group = idGenerate.getCfg().getProductionGroupMap().get(
+						expect.getValue()
+				);
+				assert group != null;
 
-				// 从cfg中查找，将非终结符对应产生式组的每个产生式都加入到非内核
-				ProductionGroup productionGroup = idGenerate.getCfg().getProductionGroupMap().get(expect.getValue());
-				assert productionGroup != null;
+				// 对每个产生式遍历
+				SubItem lookhead = item.getLookheadSubItem();
+				Set<String> extend_lookhead = item.getLookheads();
+				for (Production production : group.getProductions()) {
+					Item newItem = null;
 
-				// 每个产生式都加入到非内核项
-				for (Production production : productionGroup.getProductions()) {
-					Item lrItem = new Item(idGenerate, production.getId(), 0);
-					lrNonKernelItems.add(lrItem);
-					addProductionPointPosSet(lrItem);
-					// 并且添加到队列中
-					queue.add(lrItem);
+					if (lookhead == null || lookhead.getValue().equals("ε")) {
+						// 继承lookhead
+						Set<String> new_extend = new HashSet<>(extend_lookhead);
+						newItem = new Item(idGenerate, production.getId(), 0, new_extend);
+					} else if (lookhead.getType() == SubItemType.nonTerminal) {
+						// 自生lookhead
+						// 获取first集
+						Set<String> first_lk = firstSet.getFirstSet().get(lookhead.getValue());
+						Set<String> new_first = new HashSet<>(first_lk);
+						newItem = new Item(idGenerate, production.getId(), 0, new_first);
+					} else if (lookhead.getType() == SubItemType.terminal) {
+						Set<String> set = new HashSet<>();
+						set.add(lookhead.getValue());
+						newItem = new Item(idGenerate, production.getId(), 0, set);
+					}
+
+					// 找一个相同核心的项，如果lookhead不同，则将lookhead加入
+					if (newItem != null) {
+						boolean newAdd = true;
+						for (Item lrItem : lrItems) {
+							if (lrItem.equalsCore(newItem)) {
+								lrItem.getLookheads().addAll(newItem.getLookheads());
+								newAdd = false;
+								break;
+							}
+						}
+						if (newAdd) {
+							queue.add(newItem);
+							lrItems.add(newItem);
+						}
+					}
 				}
 			}
 		}
+
+		isClosure = true;
 	}
 
 	/**
@@ -103,43 +138,33 @@ public class ItemSet {
 	 * @return 如果包含返回true
 	 */
 	public boolean contains(ItemSet other) {
-		if (other == this) return false;
-		return contains(other.productionPointPosSet);
-	}
 
-	private boolean contains(Map<Integer, Set<Integer>> otherProductionPointPosSet) {
-		var entry = otherProductionPointPosSet.entrySet();
-		for (var item : entry) {
-			int keys = item.getKey();
-			Set<Integer> values = item.getValue();
-
-			Set<Integer> current = productionPointPosSet.get(keys);
-			// 当前项集不包含
-			if (current == null) return false;
-
-			// 如果匹配成功，检查·的位置是否一致
-			boolean status = current.containsAll(values);
-			if (!status) return false;
+		for (Item lrItem : other.getLrItems()) {
+			if (!lrItem.include(this)) return false;
 		}
-
 		return true;
 	}
 
-	private void addProductionPointPosSet(Item item) {
-		Set<Integer> set = productionPointPosSet.computeIfAbsent(item.getProductionId(), k -> new HashSet<>());
-		set.add(item.getPointPos());
+	/**
+	 * 传入一个项集，判断当前项集和另一个项集具有相同的核心
+	 * @param other 另外一个项集
+	 * @return 如果包含返回true
+	 */
+	public boolean containsCore(ItemSet other) {
+		if (other.getLrItems().size() != this.getLrItems().size()) return false;
+
+		for (Item lrItem : other.getLrItems()) {
+			if (!lrItem.includeCore(this)) return false;
+		}
+		return true;
+	}
+
+	public Set<Item> getLrItems() {
+		return lrItems;
 	}
 
 	public Map<String, ItemSet> getGotoTables() {
 		return gotoTables;
-	}
-
-	public Set<Item> getLrKernelItems() {
-		return lrKernelItems;
-	}
-
-	public Set<Item> getLrNonKernelItems() {
-		return lrNonKernelItems;
 	}
 
 	public void setId(int id) {
@@ -151,33 +176,17 @@ public class ItemSet {
 	}
 
 	public void printItemSet() {
-		Fout fout = new Fout(ColumnAttr.qCreate("KernelItemSet", "NonKernelItemSet"));
+		Fout fout = new Fout(ColumnAttr.qCreate("ItemSet", "Lookhead", "Goto"));
 		fout.setTableName("I" + id);
 
-		Object[] ko = lrKernelItems.toArray();
-		Object[] kno = lrNonKernelItems.toArray();
+		for (Item lrItem : lrItems) {
+			fout.insert(getProductionStr(lrItem.getProductionHead(), idGenerate.getSubItems(lrItem.getProductionId()), lrItem.getPointPos()));
+			fout.insert(lrItem.getLookheads());
 
-		int len = Math.max(ko.length, kno.length);
-		String strKO = "";
-		String strKNO = "";
-		for (int i = 0; i < len; i++) {
-			if (i < ko.length) {
-				String head = String.valueOf(idGenerate.getProductionHead(((Item)ko[i]).getProductionId()));
-				var subItems = idGenerate.getSubItems(((Item) ko[i]).getProductionId());
-				strKO = getProductionStr(head, subItems, ((Item) ko[i]).getPointPos());
-
-			}
-			else strKO = "";
-
-			if (i < kno.length) {
-				String head = String.valueOf(idGenerate.getProductionHead(((Item)kno[i]).getProductionId()));
-				var subItems = idGenerate.getSubItems(((Item) kno[i]).getProductionId());
-				strKNO = getProductionStr(head, subItems, ((Item) kno[i]).getPointPos());
-			}
-			else strKNO = "";
-
-			fout.insertln(strKO, strKNO);
+			if (lrItem.getExpectSubItem() == null) fout.insert("");
+			else fout.insert("Goto -> " + gotoTables.get(lrItem.getExpectSubItem().getValue()).getId());
 		}
+
 		fout.fout();
 	}
 

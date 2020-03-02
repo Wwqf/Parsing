@@ -135,6 +135,12 @@ public class BufferIO {
 		else return new String(bufferTwo, lexemeBegin, readEachLength - lexemeBegin);
 	}
 
+	public void reset() {
+		lexemeBegin = 0;
+		forward = -1;
+		stopLexicalAnalysis = false;
+	}
+
 	public static final class Builder {
 		private BufferedReader reader = null;
 		private int bufferSize = 4096;

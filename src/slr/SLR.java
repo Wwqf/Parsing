@@ -1,4 +1,4 @@
-package lr;
+package slr;
 
 import algorithm.FirstSet;
 import algorithm.FollowSet;
@@ -131,7 +131,7 @@ public class SLR {
 					int itemSetId = singleGoto.get(head);
 					itemSetIdStack.push(itemSetId);
 				} else {
-					Log.error("error!");
+					Log.error("not found head error!");
 				}
 
 				actionStr = "According to [" +
@@ -154,7 +154,7 @@ public class SLR {
 				fout.insertln(stackStr.toString(), symbolStr.toString(), morphemeStr, "Accept!");
 				break;
 			} else if (action.type == ActionType.error) {
-				Log.error("error!");
+				Log.error("identify error!");
 			}
 
 			fout.insertln(stackStr.toString(), symbolStr.toString(), morphemeStr, actionStr);
@@ -198,6 +198,11 @@ public class SLR {
 				analyze(itemSet, singleAction, singleGoto, item);
 			}
 
+			var itsGoto = itemSet.getGotoTables().entrySet();
+			for (var item : itsGoto) {
+				if (cfg.getTerminals().contains(item.getKey())) continue;
+				singleGoto.put(item.getKey(), item.getValue().getId());
+			}
 		}
 	}
 

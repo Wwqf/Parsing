@@ -36,6 +36,10 @@ public class FirstSet {
 			}
 		}
 
+		for (var item : firstSet.entrySet()) {
+			item.getValue().remove("ε");
+		}
+
 		isUpdated = true;
 		return this.firstSet;
 	}
@@ -62,8 +66,13 @@ public class FirstSet {
 
 					// 如果是终结符，添加到result中，并且跳出循环
 					if (subItem.getType() == SubItemType.terminal) {
-						result.add(subItem.getValue());
-						itemFirstSet.add(subItem.getValue());
+						// 终结符分两种情况，一种是有ε，一种是没有ε
+						if (subItem.getValue().equals("ε")) {
+							subItem = iterator.next();
+						} else {
+							result.add(subItem.getValue());
+							itemFirstSet.add(subItem.getValue());
+						}
 						break;
 					}
 

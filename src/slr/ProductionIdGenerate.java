@@ -1,7 +1,6 @@
-package lr;
+package slr;
 
 import cfg.CFG;
-import cfg.CFGBuilder;
 import cfg.production.Production;
 import cfg.production.SubItem;
 
